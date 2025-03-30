@@ -290,3 +290,120 @@ def save_config(config):
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=4)
 ```
+
+## 关键组件
+
+### 操作符（Operator）
+
+操作符是插件的功能执行单元，需定义以下方法：
+
+- **poll()**：判断操作符是否可用的静态方法
+- **execute()**：执行操作的主要方法
+- **invoke()**：在执行前调用，通常用于设置参数或显示对话框
+- **modal()**：用于实现模态操作（连续交互）
+
+```python
+class MyOperator(bpy.types.Operator):
+    bl_idname = "object.my_operator"
+    bl_label = "操作名称"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    # 属性定义
+    my_prop: bpy.props.FloatProperty(name="参数名称")
+    
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None
+    
+    def execute(self, context):
+        # 功能实现代码
+        return {'FINISHED'}
+```
+
+### 面板（Panel）
+
+面板用于提供用户界面，需定义以下内容：
+
+- **bl_space_type**：面板所在空间（如VIEW_3D、PROPERTIES）
+- **bl_region_type**：面板所在区域（如UI、TOOLS）
+- **bl_category**：面板所在选项卡名称
+- **draw()**：绘制界面的方法
+
+```python
+class MyPanel(bpy.types.Panel):
+    bl_idname = "VIEW3D_PT_my_panel"
+    bl_label = "我的面板"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "我的插件"
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("object.my_operator")
+```
+
+### 属性（Property）
+
+使用`bpy.props`模块定义属性，常见类型：
+
+- **FloatProperty**：浮点数属性
+- **IntProperty**：整数属性
+- **BoolProperty**：布尔属性
+- **StringProperty**：字符串属性
+- **EnumProperty**：枚举选项属性
+- **PointerProperty**：指向其他数据的指针
+- **CollectionProperty**：集合属性
+
+### 属性组（PropertyGroup）
+
+用于组织复杂属性结构：
+
+```python
+class MySettings(bpy.types.PropertyGroup):
+    size: bpy.props.FloatProperty(
+        name="尺寸",
+        default=1.0,
+        min=0.1,
+        max=10.0
+    )
+    
+    mode: bpy.props.EnumProperty(
+        name="模式",
+        items=[
+            ('OPTION1', "选项1", "第一个选项描述"),
+            ('OPTION2', "选项2", "第二个选项描述"),
+        ],
+        default='OPTION1'
+    )
+```
+
+## API使用规范
+
+### 核心API模块
+
+- **bpy**：主要Blender Python API
+- **bmesh**：网格编辑API
+- **mathutils**：数学工具（向量、矩阵等）
+- **bgl/gpu**：OpenGL相关功能
+- **addon_utils**：插件工具函数
+
+### 数据访问规范
+
+- 使用`context`获取当前上下文数据
+- 使用`bpy.data`访问场景中的数据块
+- 使用`object.data`访问物体的网格数据
+- 推荐使用安全访问方式，确保对象存在再访问其属性
+
+### 错误处理
+
+- 使用`try-except`块处理可能的错误
+- 使用`self.report()`向用户报告错误
+- 记录详细错误信息到控制台供调试
+
+```python
+try:
+    # 操作代码
+except Exception as e:
+    self.report({'ERROR'}, f"发生错误: {str(e)}")
+    return {'CANCELLED'}
+```
