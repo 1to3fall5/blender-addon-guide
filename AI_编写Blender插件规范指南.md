@@ -153,3 +153,140 @@ class OBJECT_OT_add_special_cube(bpy.types.Operator):
         DEFAULT_COLOR = (1.0, 1.0, 1.0)
         return {'FINISHED'}
 ```
+
+## 文件夹组织规范
+
+### 插件根目录组织
+
+- 保持根目录简洁，只包含必要的Python模块和资源目录
+- 使用标准化的目录结构，便于理解和维护
+- 模块化组织代码，按功能拆分为多个Python文件
+
+### 标准目录结构
+
+```
+my_addon/
+│
+├── __init__.py         # 插件入口，包含bl_info和注册函数
+├── operators/          # 操作符实现目录
+│   ├── __init__.py     # 导入所有操作符
+│   ├── create.py       # 创建类操作符
+│   └── modify.py       # 修改类操作符
+│
+├── ui/                 # 界面相关目录
+│   ├── __init__.py     # 导入所有UI元素
+│   ├── panels.py       # 面板定义
+│   └── menus.py        # 菜单定义
+│
+├── properties/         # 属性定义目录
+│   ├── __init__.py
+│   └── properties.py   # 属性和属性组定义
+│
+├── core/               # 核心功能目录
+│   ├── __init__.py
+│   ├── utils.py        # 实用工具函数
+│   └── algorithms.py   # 核心算法实现
+│
+├── presets/            # 预设目录
+│   └── default.py      # 默认预设
+│
+├── resources/          # 资源目录
+│   ├── icons/          # 图标资源
+│   ├── templates/      # 模板文件
+│   └── config.json     # 配置文件
+│
+└── lib/                # 第三方库目录
+    └── external_module/  # 外部依赖模块
+```
+
+### 资源文件组织
+
+- **图标资源**：放置在`resources/icons/`目录，使用统一的格式（建议PNG）
+- **预设文件**：放置在`presets/`目录，便于用户选择不同配置
+- **配置文件**：如需持久化配置，使用JSON或YAML格式存储在`resources/`目录
+- **临时文件**：在操作系统临时目录创建和管理，不要放在插件目录内
+
+### 第三方库处理
+
+- **内置库**：直接放置在`lib/`目录下，确保相对导入路径正确
+- **纯Python库**：可直接包含在插件包中
+- **带编译组件的库**：需要为不同操作系统提供预编译版本，或在安装时编译
+- **常用库处理**：
+
+```python
+# 第三方库导入示例
+try:
+    # 先尝试从标准路径导入
+    import numpy as np
+except ImportError:
+    # 如果失败，从插件lib目录导入
+    import os
+    import sys
+    lib_path = os.path.join(os.path.dirname(__file__), "lib")
+    if lib_path not in sys.path:
+        sys.path.append(lib_path)
+    import numpy as np
+```
+
+### 多文件模块组织
+
+- 使用`__init__.py`聚合子模块中的类和函数
+- 通过命名空间组织代码，避免导入时的命名冲突
+- 示例导入结构：
+
+```python
+# __init__.py 示例
+from .operators.create import OBJECT_OT_add_special_cube
+from .operators.modify import OBJECT_OT_modify_special_cube
+from .ui.panels import VIEW3D_PT_special_tools
+from .properties.properties import SpecialProperties
+
+# 统一注册所有类
+classes = (
+    OBJECT_OT_add_special_cube,
+    OBJECT_OT_modify_special_cube,
+    VIEW3D_PT_special_tools,
+    SpecialProperties
+)
+
+def register():
+    from bpy.utils import register_class
+    for cls in classes:
+        register_class(cls)
+
+def unregister():
+    from bpy.utils import unregister_class
+    for cls in reversed(classes):
+        unregister_class(cls)
+```
+
+### 配置文件使用
+
+- 使用配置文件存储默认设置和用户偏好
+- 支持配置文件的保存和加载
+- 示例配置管理：
+
+```python
+import os
+import json
+
+def get_config_path():
+    """获取配置文件路径"""
+    addon_dir = os.path.dirname(os.path.realpath(__file__))
+    return os.path.join(addon_dir, "resources", "config.json")
+
+def load_config():
+    """加载配置"""
+    config_path = get_config_path()
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    return {} # 默认配置
+
+def save_config(config):
+    """保存配置"""
+    config_path = get_config_path()
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=4)
+```
